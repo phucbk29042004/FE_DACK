@@ -268,7 +268,6 @@ function renderOrderDetailContent(order) {
                          onerror="this.onerror=null;this.src='${FALLBACK_IMAGE}'">
                     <div>
                       <div class="fw-semibold">${product.tenSp}</div>
-                      ${product.productId ? `<small class="text-muted">ID: ${product.productId}</small>` : ""}
                       ${allowReview && product.productId ? `
                         <div class="mt-2">
                           <button class="btn btn-outline-primary btn-sm review-product-btn"

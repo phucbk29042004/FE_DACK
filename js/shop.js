@@ -19,6 +19,10 @@ const priceMaxInput = document.getElementById("price-max");
 const priceHint = document.getElementById("price-hint");
 const sortSelect = document.getElementById("sort-select");
 const inStockSwitch = document.getElementById("in-stock-switch");
+const loadMoreBtn = document.getElementById("load-more-btn");
+const loadMoreContainer = document.getElementById("load-more-container");
+const loadMoreSpinner = document.getElementById("load-more-spinner");
+const loadMoreText = document.getElementById("load-more-text");
 
 let allProducts = []; // Lưu tất cả sản phẩm
 let categories = []; // Lưu danh sách danh mục
@@ -31,8 +35,12 @@ const filterState = {
   giaMin: null,
   giaMax: null,
   sapXep: "gia-tang",
-  conHang: null
+  conHang: null,
+  page: 1,
+  limit: 12
 };
+
+let totalPages = 1;
 
 let fetchTimeout = null;
 let favoriteIds = new Set();
@@ -250,11 +258,18 @@ async function loadPromotionProducts() {
   }
 }
 
-async function fetchProducts() {
+async function fetchProducts(isLoadMore = false) {
   try {
-    loadingSpinner.style.display = "block";
-    noProducts.style.display = "none";
-    productsContainer.innerHTML = "";
+    if (!isLoadMore) {
+      loadingSpinner.style.display = "block";
+      noProducts.style.display = "none";
+      filterState.page = 1;
+      productsContainer.innerHTML = "";
+    } else {
+      loadMoreBtn.disabled = true;
+      loadMoreSpinner.style.display = "inline-block";
+      loadMoreText.textContent = "Đang tải...";
+    }
 
     const params = {
       keyword: filterState.keyword || undefined,
@@ -262,44 +277,76 @@ async function fetchProducts() {
       giaMin: filterState.giaMin || undefined,
       giaMax: filterState.giaMax || undefined,
       sapXep: filterState.sapXep || undefined,
-      conHang: filterState.conHang
+      conHang: filterState.conHang,
+      page: filterState.page,
+      limit: filterState.limit
     };
 
     const response = await api.get("/api/Product/LocVaTimKiem", { params });
     if (response.data?.success) {
-      allProducts = response.data.data || [];
-      renderProducts(allProducts);
+      const newProducts = response.data.data || [];
+      totalPages = response.data.totalPages || 1;
+      
+      if (isLoadMore) {
+        allProducts = [...allProducts, ...newProducts];
+      } else {
+        allProducts = newProducts;
+      }
+
+      renderProducts(newProducts, isLoadMore);
       updateProductCount(response.data.total || allProducts.length);
+
+      // Hiển thị/ẩn nút Load More
+      if (filterState.page < totalPages) {
+        loadMoreContainer.style.display = "flex";
+      } else {
+        loadMoreContainer.style.display = "none";
+      }
     } else {
-      allProducts = [];
-      renderProducts([]);
-      updateProductCount(0);
+      if (!isLoadMore) {
+        allProducts = [];
+        renderProducts([]);
+        updateProductCount(0);
+      }
+      loadMoreContainer.style.display = "none";
     }
   } catch (error) {
     console.error("Lỗi khi load sản phẩm:", error);
-    productsContainer.innerHTML = `
-      <div class="col-12">
-        <div class="alert alert-danger" role="alert">
-          Lỗi khi tải danh sách sản phẩm: ${error.response?.data?.message || error.message}
+    if (!isLoadMore) {
+      productsContainer.innerHTML = `
+        <div class="col-12">
+          <div class="alert alert-danger" role="alert">
+            Lỗi khi tải danh sách sản phẩm: ${error.response?.data?.message || error.message}
+          </div>
         </div>
-      </div>
-    `;
-    noProducts.style.display = "block";
-    updateProductCount(0);
+      `;
+      noProducts.style.display = "block";
+      updateProductCount(0);
+    }
+    loadMoreContainer.style.display = "none";
   } finally {
     loadingSpinner.style.display = "none";
+    loadMoreBtn.disabled = false;
+    loadMoreSpinner.style.display = "none";
+    loadMoreText.textContent = "Xem thêm sản phẩm";
   }
 }
 
-function renderProducts(list) {
-  if (!list.length) {
+function renderProducts(list, isLoadMore = false) {
+  if (!isLoadMore && !list.length) {
     noProducts.style.display = "block";
     productsContainer.innerHTML = "";
     return;
   }
 
   noProducts.style.display = "none";
-  productsContainer.innerHTML = list.map(product => renderProduct(product)).join("");
+  const html = list.map(product => renderProduct(product)).join("");
+  
+  if (isLoadMore) {
+    productsContainer.insertAdjacentHTML("beforeend", html);
+  } else {
+    productsContainer.innerHTML = html;
+  }
 
   document.querySelectorAll(".add-to-cart-btn").forEach(btn => {
     btn.addEventListener("click", async (e) => {
@@ -815,6 +862,13 @@ clearFiltersBtn.addEventListener("click", () => {
 
 applyFiltersBtn.addEventListener("click", () => {
   fetchProducts();
+});
+
+loadMoreBtn.addEventListener("click", () => {
+  if (filterState.page < totalPages) {
+    filterState.page++;
+    fetchProducts(true);
+  }
 });
 
 // Khởi tạo khi trang load

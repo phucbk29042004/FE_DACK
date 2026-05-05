@@ -107,7 +107,6 @@ function renderOrderDetail(data) {
                           ` : ''}
                           <div>
                             <strong>${product.tenSp}</strong>
-                            ${product.productId ? `<br><small class="text-muted">ID: ${product.productId}</small>` : ''}
                           </div>
                         </div>
                       </td>

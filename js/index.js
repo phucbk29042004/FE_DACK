@@ -192,11 +192,10 @@ function getRandomProducts(products, count = 3) {
 // Load và render sản phẩm ngẫu nhiên
 async function loadRandomProducts() {
   try {
-    const response = await api.get("/api/Product/DanhSachSanPham");
+    const response = await api.get("/api/Product/SanPhamNgauNhien/3");
 
     if (response.data && response.data.success && response.data.data) {
-      const allProducts = response.data.data;
-      const randomProducts = getRandomProducts(allProducts, 3);
+      const randomProducts = response.data.data;
       
       // Tìm container sản phẩm trong index.html
       const productSection = document.querySelector('.product-section .row');
